@@ -13,7 +13,7 @@
  */
 (function () {
   // ---- 이 값만 배포 후 실제 주소로 교체하면 됩니다 ----
-  const CALCULATOR_URL = 'https://monthliv.github.io/Calculator/';
+  const CALCULATOR_URL = 'https://monthliv.github.io/Calculator/Refund.html';
 
   let modalEl = null;
 
