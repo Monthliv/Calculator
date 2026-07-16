@@ -229,6 +229,14 @@
 
   <div class="card">
     <div class="field">
+      <label>연장 구분</label>
+      <div class="tabs" id="memberTypeTabs">
+        <button type="button" class="tab active" data-value="exist">기존회원 연장</button>
+        <button type="button" class="tab" data-value="new">신규회원 연장</button>
+      </div>
+    </div>
+
+    <div class="field">
       <label for="branch">지점</label>
       <select id="branch"></select>
     </div>
@@ -255,20 +263,15 @@
 
     <div class="grid-2">
       <div class="field">
-        <label for="moveInDate">입실일</label>
-        <input type="date" id="moveInDate">
-      </div>
-      <div class="field">
         <label for="currentEndDate">기존 퇴실 예정일</label>
         <input type="date" id="currentEndDate">
       </div>
+      <div class="field">
+        <label for="newEndDate">연장 후 새 퇴실일</label>
+        <input type="date" id="newEndDate">
+      </div>
     </div>
-
-    <div class="field">
-      <label for="newEndDate">연장 후 새 퇴실일</label>
-      <input type="date" id="newEndDate">
-    </div>
-    <div class="hint">입실일과 기존 퇴실 예정일 기준으로 신규회원/기존회원 단가가 자동 적용됩니다 (최초 계약 30일 미만: 신규회원 단가, 30일 이상: 기존회원 단가).</div>
+    <div class="hint">위에서 선택한 연장 구분(신규회원/기존회원)에 따라 1박 단가가 적용됩니다.</div>
 
     <div class="result" id="result" style="display:none">
       <div class="result-scenario" id="resultScenario"></div>
@@ -349,12 +352,8 @@ const ROOMS = [
 ];
 
 // ---- 연장 금액 계산 로직 ----
-// 신규회원(입실 후 30일 미만): 신규회원 1박 금액 적용
-// 기존회원(입실 후 30일 이상): 기존회원 1박 금액 적용 (방에 따라 인원수별 금액 상이)
-function calculateExtension({ room, occupancy, moveInDate, currentEndDate, newEndDate }) {
-  const daysSoFar = Math.round((currentEndDate - moveInDate) / 86400000);
-  const isNewMember = daysSoFar < 30;
-
+// 신규회원 연장: 신규회원 1박 금액 적용 / 기존회원 연장: 기존회원 1박 금액 적용 (방에 따라 인원수별 금액 상이)
+function calculateExtension({ room, occupancy, isNewMember, currentEndDate, newEndDate }) {
   const nightlyRate = isNewMember
     ? room.new
     : (Array.isArray(room.ex) ? room.ex[occupancy - 1] : room.ex);
@@ -366,10 +365,14 @@ function calculateExtension({ room, occupancy, moveInDate, currentEndDate, newEn
   }
 
   const amount = nightlyRate * extraNights;
-  return { valid: true, isNewMember, nightlyRate, extraNights, amount, daysSoFar };
+  return { valid: true, isNewMember, nightlyRate, extraNights, amount };
 }
 
 // ---- UI 바인딩 ----
+const memberTypeTabs = document.getElementById('memberTypeTabs');
+const memberTypeButtons = [...memberTypeTabs.querySelectorAll('.tab')];
+let isNewMember = false; // 디폴트: 기존회원 연장 우선
+
 const branchSel = document.getElementById('branch');
 const roomSel = document.getElementById('room');
 const roomNumberSel = document.getElementById('roomNumber');
@@ -378,7 +381,6 @@ const occupancyTabs = document.getElementById('occupancyTabs');
 const occupancyButtons = [...occupancyTabs.querySelectorAll('.tab')];
 let occupancy = 1;
 
-const moveInInput = document.getElementById('moveInDate');
 const currentEndInput = document.getElementById('currentEndDate');
 const newEndInput = document.getElementById('newEndDate');
 
@@ -413,6 +415,14 @@ function applyRoomData() {
   calculate();
 }
 
+memberTypeButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    isNewMember = btn.dataset.value === 'new';
+    memberTypeButtons.forEach(b => b.classList.toggle('active', b === btn));
+    calculate();
+  });
+});
+
 occupancyButtons.forEach(btn => {
   btn.addEventListener('click', () => {
     occupancy = Number(btn.dataset.value);
@@ -423,18 +433,17 @@ occupancyButtons.forEach(btn => {
 
 branchSel.addEventListener('change', () => fillRooms(branchSel.value));
 roomSel.addEventListener('change', applyRoomData);
-[moveInInput, currentEndInput, newEndInput].forEach(el => el.addEventListener('change', calculate));
+[currentEndInput, newEndInput].forEach(el => el.addEventListener('change', calculate));
 
 // 초기값: 오늘 날짜
 const today = new Date().toISOString().slice(0, 10);
-moveInInput.value = today;
 currentEndInput.value = today;
 newEndInput.value = today;
 fillRooms(branchSel.value);
 
 function calculate() {
   const room = currentRoom();
-  if (!room || !moveInInput.value || !currentEndInput.value || !newEndInput.value) {
+  if (!room || !currentEndInput.value || !newEndInput.value) {
     resultBox.style.display = 'none';
     return;
   }
@@ -442,7 +451,7 @@ function calculate() {
   const r = calculateExtension({
     room,
     occupancy,
-    moveInDate: new Date(moveInInput.value),
+    isNewMember,
     currentEndDate: new Date(currentEndInput.value),
     newEndDate: new Date(newEndInput.value)
   });
@@ -458,7 +467,7 @@ function calculate() {
 
   resultBox.style.display = 'block';
   resultBox.classList.remove('blocked');
-  resultScenario.textContent = r.isNewMember ? '신규회원 단가 적용 (입실 30일 미만)' : '기존회원 단가 적용 (입실 30일 이상)';
+  resultScenario.textContent = r.isNewMember ? '신규회원 단가 적용' : '기존회원 단가 적용';
   resultAmount.innerHTML = `${r.amount.toLocaleString('ko-KR')}<span>원</span>`;
   resultBreakdown.innerHTML = `
     <div class="breakdown-row"><span>연장 일수</span><b>${r.extraNights}박</b></div>
