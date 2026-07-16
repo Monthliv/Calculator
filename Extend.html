@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MONTHLIV 연장 금액 계산기</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<style>
+  @font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/woff2/PretendardVariable.woff2') format('woff2-variations');
+    font-weight: 45 920;
+  }
+
+  :root {
+    --bg: #F5F1E6;          /* 연한 웜 베이지 배경 */
+    --card-bg: #FFFFFF;
+    --border: #E8E0CC;
+    --text-main: #3B2A22;   /* 딥 브라운 텍스트 */
+    --text-muted: #7A6F68;  /* 소프트 브라운 텍스트 */
+    --accent: #8C6A50;      /* 클래식 브라운 포인트 */
+    --accent-soft: #F9F6F0; /* 아주 연한 브라운 톤 */
+    --warn: #B5502E;        /* 테라코타 오렌지 (주의/경고) */
+    --warn-soft: #FAF0EC;   /* 주의 배경 */
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html {
+    overflow-x: auto;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text-main);
+    font-family: 'Pretendard', sans-serif;
+    padding: 40px 16px;
+    display: flex;
+    justify-content: center;
+    min-width: 360px; /* 모바일 최소 폭 아래로는 줄어들지 않고 가로 스크롤 처리 */
+  }
+
+  .container {
+    width: 100%;
+    max-width: 440px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+
+  .brand {
+    font-family: Georgia, serif;
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    color: #800020;
+  }
+
+  .title {
+    font-size: 20px;
+    font-weight: 800;
+    margin-top: 8px;
+    color: #1A1A1A;
+  }
+
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 6px 18px rgba(59, 42, 34, 0.05);
+  }
+
+  .field { margin-bottom: 16px; }
+
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  /* 인원수 탭 (1인 / 2인) */
+  .tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    background: #EAE2CF;
+    padding: 4px;
+    border-radius: 10px;
+  }
+
+  .tab {
+    border: none;
+    background: transparent;
+    padding: 8px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+
+  .tab.active {
+    background: #FFF;
+    color: var(--text-main);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+
+  /* 입력 폼 */
+  select, input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14.5px;
+    font-family: inherit;
+    color: var(--text-main);
+    background: #FFF;
+    outline: none;
+  }
+
+  select:focus, input:focus {
+    border-color: var(--accent);
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .hint {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-top: 5px;
+    line-height: 1.4;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 20px 0;
+  }
+
+  /* 결과창 */
+  .result {
+    border-radius: 14px;
+    padding: 16px;
+    background: var(--accent-soft);
+    border: 1px solid var(--border);
+    margin-top: 16px;
+  }
+  .result.blocked { background: var(--warn-soft); border-color: #F3DED7; }
+
+  .result-scenario {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .result.blocked .result-scenario { color: var(--warn); }
+
+  .result-amount {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text-main);
+    margin-bottom: 12px;
+  }
+  .result-amount span { font-size: 15px; font-weight: 600; margin-left: 2px; }
+
+  .breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12.5px;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+  }
+  .breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    color: var(--text-muted);
+  }
+  .breakdown-row b { color: var(--text-main); }
+
+  /* 푸터 및 주의사항 */
+  .disclaimer {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-main);
+    line-height: 1.6;
+    margin-top: 20px;
+    padding: 14px;
+    border-radius: 10px;
+    background-color: var(--warn-soft);
+    border: 1px solid #F3DED7;
+    display: flex;
+    gap: 8px;
+  }
+  .disclaimer-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .disclaimer span {
+    color: var(--warn);
+    font-weight: 700;
+  }
+
+  .footer {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 24px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="brand">MONTHLIV</div>
+    <h1 class="title">연장 금액 계산기</h1>
+  </div>
+
+  <div class="card">
+    <div class="field">
+      <label for="branch">지점</label>
+      <select id="branch"></select>
+    </div>
+
+    <div class="field">
+      <label for="room">룸타입</label>
+      <select id="room"></select>
+    </div>
+
+    <div class="field" id="occupancyField" style="display:none">
+      <label>인원수</label>
+      <div class="tabs" id="occupancyTabs">
+        <button type="button" class="tab active" data-value="1">1인</button>
+        <button type="button" class="tab" data-value="2">2인</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="grid-2">
+      <div class="field">
+        <label for="moveInDate">입실일</label>
+        <input type="date" id="moveInDate">
+      </div>
+      <div class="field">
+        <label for="currentEndDate">기존 퇴실 예정일</label>
+        <input type="date" id="currentEndDate">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="newEndDate">연장 후 새 퇴실일</label>
+      <input type="date" id="newEndDate">
+    </div>
+    <div class="hint">입실일과 기존 퇴실 예정일 기준으로 신규회원/기존회원 단가가 자동 적용됩니다 (최초 계약 30일 미만: 신규회원 단가, 30일 이상: 기존회원 단가).</div>
+
+    <div class="result" id="result" style="display:none">
+      <div class="result-scenario" id="resultScenario"></div>
+      <div class="result-amount" id="resultAmount">0<span>원</span></div>
+      <div class="breakdown" id="resultBreakdown"></div>
+    </div>
+
+    <div class="disclaimer">
+      <span class="disclaimer-icon">⚠️</span>
+      <div>계산 결과는 <span>예상 참고용</span>이며 실제 연장 금액과 다를 수 있습니다.<br>입주 시기·거주 기간에 따라 금액이 달라질 수 있으니 정확한 금액은 <span>상담원</span>을 통해 확인해 주세요.</div>
+    </div>
+  </div>
+
+  <div class="footer">© MONTHLIV. All Rights Reserved.</div>
+</div>
+
+<script>
+// ---- 지점/룸타입별 연장 단가 데이터 (먼슬리브_연장금액.xlsx 기준) ----
+// p1/p2: 1인/2인 정상 입실료, new: 신규회원 1박 금액, ex: 기존회원 1박 금액 (숫자 또는 [1인,2인] 배열)
+const ROOMS = [
+  {"b":"먼슬리브 성수","r":"그레이스","p1":950000,"p2":null,"new":43000,"ex":29000},
+  {"b":"먼슬리브 성수","r":"블레스","p1":850000,"p2":null,"new":48000,"ex":32000},
+  {"b":"먼슬리브 성수","r":"트리니티","p1":1050000,"p2":1150000,"new":50000,"ex":[35000,39000]},
+  {"b":"먼슬리브 마곡 발산역","r":"블레스","p1":770000,"p2":null,"new":40000,"ex":26000},
+  {"b":"먼슬리브 마곡 발산역","r":"그레이스","p1":820000,"p2":null,"new":43000,"ex":28000},
+  {"b":"먼슬리브 마곡 발산역","r":"테라스","p1":900000,"p2":null,"new":45000,"ex":30000},
+  {"b":"먼슬리브 마곡 발산역","r":"트리니티","p1":950000,"p2":1050000,"new":48000,"ex":[32000,35000]},
+  {"b":"먼슬리브 잠실 석촌고분역","r":"블레스","p1":750000,"p2":null,"new":40000,"ex":25000},
+  {"b":"먼슬리브 잠실 석촌고분역","r":"그레이스","p1":850000,"p2":null,"new":43000,"ex":29000},
+  {"b":"먼슬리브 잠실 석촌고분역","r":"트리니티","p1":950000,"p2":1050000,"new":48000,"ex":[32000,35000]},
+  {"b":"먼슬리브 가산디지털 독산역","r":"블레스","p1":700000,"p2":null,"new":38000,"ex":24000},
+  {"b":"먼슬리브 가산디지털 독산역","r":"그레이스","p1":750000,"p2":null,"new":40000,"ex":25000},
+  {"b":"먼슬리브 가산디지털 독산역","r":"트리니티B","p1":950000,"p2":1050000,"new":45000,"ex":[30000,34000]},
+  {"b":"먼슬리브 가산디지털 독산역","r":"트리니티A","p1":800000,"p2":900000,"new":48000,"ex":[32000,35000]},
+  {"b":"먼슬리브 목동","r":"블레스","p1":750000,"p2":null,"new":40000,"ex":30000},
+  {"b":"먼슬리브 목동","r":"그레이스","p1":800000,"p2":null,"new":43000,"ex":33000},
+  {"b":"먼슬리브 목동","r":"트리니티","p1":950000,"p2":1050000,"new":48000,"ex":36000},
+  {"b":"먼슬리브 오산","r":"피스","p1":550000,"p2":null,"new":46000,"ex":23000},
+  {"b":"먼슬리브 오산","r":"피스 플러스","p1":570000,"p2":null,"new":46000,"ex":24000},
+  {"b":"먼슬리브 오산","r":"블레스","p1":580000,"p2":null,"new":50000,"ex":25000},
+  {"b":"먼슬리브 오산","r":"그레이스","p1":630000,"p2":null,"new":52000,"ex":26000},
+  {"b":"먼슬리브 오산","r":"그레이스 플러스","p1":650000,"p2":null,"new":54000,"ex":27000},
+  {"b":"먼슬리브 오산","r":"그레이스 더블 플러스","p1":670000,"p2":null,"new":60000,"ex":29000},
+  {"b":"먼슬리브 오산","r":"트리니티","p1":700000,"p2":800000,"new":64000,"ex":30000},
+  {"b":"먼슬리브 오산","r":"트리니티 플러스","p1":700000,"p2":800000,"new":64000,"ex":30000},
+  {"b":"먼슬리브 오산","r":"트리니티 파우더룸","p1":700000,"p2":800000,"new":64000,"ex":30000},
+  {"b":"먼슬리브 오산","r":"트리니티 파우더룸 더블침대","p1":750000,"p2":850000,"new":70000,"ex":32000},
+  {"b":"먼슬리브 오산","r":"트리니티 파우더룸 더블침대 플러스","p1":700000,"p2":800000,"new":64000,"ex":30000},
+  {"b":"먼슬리브 성수역","r":"쿼드","p1":1400000,"p2":null,"new":80000,"ex":60000},
+  {"b":"먼슬리브 성수역","r":"블레스","p1":950000,"p2":1050000,"new":48000,"ex":[32000,35000]},
+  {"b":"먼슬리브 성수역","r":"그레이스","p1":1050000,"p2":1150000,"new":53000,"ex":[35000,39000]},
+  {"b":"먼슬리브 광장시장","r":"그레이스","p1":1050000,"p2":null,"new":48000,"ex":32000},
+  {"b":"먼슬리브 광장시장","r":"트리니티","p1":950000,"p2":1050000,"new":53000,"ex":[35000,39000]},
+  {"b":"먼슬리브 방배 이수역","r":"블레스","p1":850000,"p2":null,"new":40000,"ex":25000},
+  {"b":"먼슬리브 방배 이수역","r":"블레스 플러스","p1":870000,"p2":null,"new":41000,"ex":26000},
+  {"b":"먼슬리브 방배 이수역","r":"그레이스","p1":900000,"p2":null,"new":42000,"ex":27000},
+  {"b":"먼슬리브 방배 이수역","r":"트리니티","p1":950000,"p2":1050000,"new":43000,"ex":[29000,32000]},
+  {"b":"먼슬리브 신대방역","r":"블레스","p1":750000,"p2":null,"new":40000,"ex":25000},
+  {"b":"먼슬리브 신대방역","r":"그레이스","p1":800000,"p2":null,"new":42000,"ex":27000},
+  {"b":"먼슬리브 신대방역","r":"트리니티","p1":970000,"p2":1070000,"new":50000,"ex":[33000,36000]},
+  {"b":"먼슬리브 신대방삼거리역 B동","r":"블레스 플러스","p1":740000,"p2":null,"new":40000,"ex":25000},
+  {"b":"먼슬리브 신대방삼거리역 B동","r":"그레이스","p1":790000,"p2":null,"new":42000,"ex":26000},
+  {"b":"먼슬리브 신대방삼거리역 B동","r":"트리니티","p1":990000,"p2":1090000,"new":52000,"ex":[33000,37000]},
+  {"b":"먼슬리브 신대방삼거리역 A동","r":"블래스 플러스","p1":740000,"p2":null,"new":40000,"ex":25000},
+  {"b":"먼슬리브 신대방삼거리역 A동","r":"그레이스","p1":790000,"p2":null,"new":42000,"ex":26000},
+  {"b":"먼슬리브 군자역","r":"블레스","p1":800000,"p2":null,"new":40000,"ex":25000},
+  {"b":"먼슬리브 군자역","r":"그레이스","p1":850000,"p2":null,"new":42000,"ex":27000},
+  {"b":"먼슬리브 군자역","r":"트리니티","p1":950000,"p2":1100000,"new":49000,"ex":[32000,37000]},
+  {"b":"먼슬리브 고려대 안암역","r":"블레스 앵글 토퍼","p1":840000,"p2":null,"new":43000,"ex":29000},
+  {"b":"먼슬리브 고려대 안암역","r":"블레스","p1":900000,"p2":null,"new":43000,"ex":29000},
+  {"b":"먼슬리브 고려대 안암역","r":"그레이스","p1":950000,"p2":null,"new":45000,"ex":30000},
+  {"b":"먼슬리브 고려대 안암역","r":"테라스","p1":1000000,"p2":null,"new":48000,"ex":32000},
+  {"b":"먼슬리브 고려대 안암역","r":"트리니티","p1":1050000,"p2":null,"new":53000,"ex":37000},
+  {"b":"먼슬리브 연신내","r":"그레이스","p1":800000,"p2":null,"new":42000,"ex":27000},
+  {"b":"먼슬리브 연신내","r":"그레이스 플러스","p1":850000,"p2":null,"new":43000,"ex":29000},
+  {"b":"먼슬리브 강남 일원","r":"그레이스","p1":900000,"p2":null,"new":45000,"ex":30000},
+  {"b":"먼슬리브 강남 일원","r":"트리니티","p1":1000000,"p2":1200000,"new":53000,"ex":[33000,40000]}
+];
+
+// ---- 연장 금액 계산 로직 ----
+// 신규회원(입실 후 30일 미만): 신규회원 1박 금액 적용
+// 기존회원(입실 후 30일 이상): 기존회원 1박 금액 적용 (방에 따라 인원수별 금액 상이)
+function calculateExtension({ room, occupancy, moveInDate, currentEndDate, newEndDate }) {
+  const daysSoFar = Math.round((currentEndDate - moveInDate) / 86400000);
+  const isNewMember = daysSoFar < 30;
+
+  const nightlyRate = isNewMember
+    ? room.new
+    : (Array.isArray(room.ex) ? room.ex[occupancy - 1] : room.ex);
+
+  const extraNights = Math.round((newEndDate - currentEndDate) / 86400000);
+
+  if (extraNights <= 0) {
+    return { valid: false };
+  }
+
+  const amount = nightlyRate * extraNights;
+  return { valid: true, isNewMember, nightlyRate, extraNights, amount, daysSoFar };
+}
+
+// ---- UI 바인딩 ----
+const branchSel = document.getElementById('branch');
+const roomSel = document.getElementById('room');
+const occupancyField = document.getElementById('occupancyField');
+const occupancyTabs = document.getElementById('occupancyTabs');
+const occupancyButtons = [...occupancyTabs.querySelectorAll('.tab')];
+let occupancy = 1;
+
+const moveInInput = document.getElementById('moveInDate');
+const currentEndInput = document.getElementById('currentEndDate');
+const newEndInput = document.getElementById('newEndDate');
+
+const resultBox = document.getElementById('result');
+const resultScenario = document.getElementById('resultScenario');
+const resultAmount = document.getElementById('resultAmount');
+const resultBreakdown = document.getElementById('resultBreakdown');
+
+const branches = [...new Set(ROOMS.map(x => x.b))];
+branchSel.innerHTML = branches.map(b => `<option value="${b}">${b}</option>`).join('');
+
+function fillRooms(branch) {
+  const rooms = ROOMS.filter(x => x.b === branch);
+  roomSel.innerHTML = rooms.map(x => `<option value="${x.r}">${x.r}</option>`).join('');
+  applyRoomData();
+}
+
+function currentRoom() {
+  return ROOMS.find(x => x.b === branchSel.value && x.r === roomSel.value) || null;
+}
+
+function applyRoomData() {
+  const room = currentRoom();
+  const hasOccupancy = !!(room && room.p2);
+  occupancyField.style.display = hasOccupancy ? 'block' : 'none';
+  if (!hasOccupancy) {
+    occupancy = 1;
+    occupancyButtons.forEach(b => b.classList.toggle('active', b.dataset.value === '1'));
+  }
+  calculate();
+}
+
+occupancyButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    occupancy = Number(btn.dataset.value);
+    occupancyButtons.forEach(b => b.classList.toggle('active', b === btn));
+    calculate();
+  });
+});
+
+branchSel.addEventListener('change', () => fillRooms(branchSel.value));
+roomSel.addEventListener('change', applyRoomData);
+[moveInInput, currentEndInput, newEndInput].forEach(el => el.addEventListener('change', calculate));
+
+// 초기값: 오늘 날짜
+const today = new Date().toISOString().slice(0, 10);
+moveInInput.value = today;
+currentEndInput.value = today;
+newEndInput.value = today;
+fillRooms(branchSel.value);
+
+function calculate() {
+  const room = currentRoom();
+  if (!room || !moveInInput.value || !currentEndInput.value || !newEndInput.value) {
+    resultBox.style.display = 'none';
+    return;
+  }
+
+  const r = calculateExtension({
+    room,
+    occupancy,
+    moveInDate: new Date(moveInInput.value),
+    currentEndDate: new Date(currentEndInput.value),
+    newEndDate: new Date(newEndInput.value)
+  });
+
+  if (!r.valid) {
+    resultBox.style.display = 'block';
+    resultBox.classList.add('blocked');
+    resultScenario.textContent = '연장 후 새 퇴실일이 기존 퇴실 예정일보다 늦어야 합니다';
+    resultAmount.innerHTML = '0<span>원</span>';
+    resultBreakdown.innerHTML = '';
+    return;
+  }
+
+  resultBox.style.display = 'block';
+  resultBox.classList.remove('blocked');
+  resultScenario.textContent = r.isNewMember ? '신규회원 단가 적용 (입실 30일 미만)' : '기존회원 단가 적용 (입실 30일 이상)';
+  resultAmount.innerHTML = `${r.amount.toLocaleString('ko-KR')}<span>원</span>`;
+  resultBreakdown.innerHTML = `
+    <div class="breakdown-row"><span>연장 일수</span><b>${r.extraNights}박</b></div>
+    <div class="breakdown-row"><span>1박 단가</span><b>${r.nightlyRate.toLocaleString('ko-KR')}원</b></div>
+  `;
+}
+</script>
+</body>
+</html>
