@@ -252,10 +252,10 @@
         <button type="button" class="tab" data-value="new">신규회원 연장</button>
       </div>
       <div class="member-desc active" id="memberDescExist">
-        <b>기존회원이란?</b><br>이미 1개월 이상 거주한 상태에서 연장하는 경우입니다.
+        <b>기존회원이란?</b><br>연속하여 1개월 이상 거주 후 추가로 연장하는 경우입니다.
       </div>
       <div class="member-desc" id="memberDescNew">
-        <b>신규회원이란?</b><br>아직 첫 달 계약 기간이 끝나지 않은 상태에서 연장하는 경우입니다.<br>단기로 연장하여 합산 거주 기간이 1개월 이상이 되어도 기존회원 단가는 적용되지 않습니다.
+        <b>신규회원이란?</b><br>1개월 미만의 단기 계약 상태에서 연장하는 경우입니다.<br>단기로 연장하여 합산 거주 기간이 1개월 이상이 되어도 기존회원 단가는 적용되지 않습니다.
       </div>
     </div>
 
@@ -290,7 +290,7 @@
         <input type="date" id="currentEndDate">
       </div>
       <div class="field">
-        <label for="newEndDate">연장 후 새 퇴실일</label>
+        <label for="newEndDate">변경 퇴실 예정일</label>
         <input type="date" id="newEndDate">
       </div>
     </div>
@@ -487,9 +487,9 @@ function calculate() {
   if (!r.valid) {
     resultBox.style.display = 'block';
     resultBox.classList.add('blocked');
-    resultScenario.textContent = '연장 후 새 퇴실일이 기존 퇴실 예정일보다 늦어야 합니다';
+    resultScenario.textContent = '';
     resultAmount.innerHTML = '0<span>원</span>';
-    resultBreakdown.innerHTML = '';
+    resultBreakdown.innerHTML = '<div style="color:var(--text-muted); line-height:1.5;">퇴실 당일 오전 11시 까지의 이용료이며, 퇴실 지연 시 추가 요금이 발생할 수 있습니다.</div>';
     return;
   }
 
