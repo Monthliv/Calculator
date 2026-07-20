@@ -206,6 +206,20 @@
   }
   .breakdown-row b { color: var(--text-main); }
 
+  .checkout-notice {
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  .checkout-notice .hl {
+    color: var(--warn);
+    font-weight: 800;
+  }
+
   /* 푸터 및 주의사항 */
   .disclaimer {
     font-size: 12.5px;
@@ -489,7 +503,7 @@ function calculate() {
     resultBox.classList.add('blocked');
     resultScenario.textContent = '';
     resultAmount.innerHTML = '0<span>원</span>';
-    resultBreakdown.innerHTML = '<div style="color:var(--text-muted); line-height:1.5;">퇴실 당일 오전 11시 까지의 이용료이며, 퇴실 지연 시 추가 요금이 발생할 수 있습니다.</div>';
+    resultBreakdown.innerHTML = '<div class="checkout-notice">퇴실 당일 <span class="hl">오전 11시까지</span>의 이용료이며, 퇴실 지연 시 <span class="hl">추가 요금</span>이 발생할 수 있습니다.</div>';
     return;
   }
 
