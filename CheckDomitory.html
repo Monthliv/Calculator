@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="당일 입실자 중 연박을 침대 타입별로 정리해 준비 대상을 확인하는 도구">
+<title>연박 체크보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  :root{
+    --paper:#F4F7F6;
+    --surface:#FFFFFF;
+    --surface-sunk:#EDF2F0;
+    --line:#DCE5E2;
+    --line-soft:#E8EEEC;
+    --ink:#15211F;
+    --ink-soft:#5C6E6A;
+    --ink-faint:#8C9C98;
+    --brand:#0F6E62;
+    --brand-soft:#E2EFEC;
+    --stay:#A9630F;
+    --stay-soft:#FAEFDD;
+    --stay-line:#E9CFA6;
+    --out:#3F6B8C;
+    --out-soft:#E7EFF5;
+    --shadow:0 1px 2px rgba(21,33,31,.05), 0 8px 24px rgba(21,33,31,.06);
+    --radius:14px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#101A18;
+      --surface:#16221F;
+      --surface-sunk:#1B2926;
+      --line:#2A3A36;
+      --line-soft:#233330;
+      --ink:#EAF1EE;
+      --ink-soft:#9DB0AB;
+      --ink-faint:#71847F;
+      --brand:#57BBAA;
+      --brand-soft:#173430;
+      --stay:#E0A05A;
+      --stay-soft:#33261485;
+      --stay-line:#5A4526;
+      --out:#8FB6D2;
+      --out-soft:#1B2C38;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#101A18;
+    --surface:#16221F;
+    --surface-sunk:#1B2926;
+    --line:#2A3A36;
+    --line-soft:#233330;
+    --ink:#EAF1EE;
+    --ink-soft:#9DB0AB;
+    --ink-faint:#71847F;
+    --brand:#57BBAA;
+    --brand-soft:#173430;
+    --stay:#E0A05A;
+    --stay-soft:#33261485;
+    --stay-line:#5A4526;
+    --out:#8FB6D2;
+    --out-soft:#1B2C38;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+  }
+
+  *{ box-sizing:border-box; }
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans KR', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    font-size:15px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{ max-width:880px; margin:0 auto; padding:36px 20px 72px; display:flex; flex-direction:column; gap:22px; }
+
+  header{ display:flex; flex-direction:column; gap:6px; }
+  h1{
+    font-family:'Gowun Batang', 'Nanum Myeongjo', serif;
+    font-size:31px; font-weight:700; letter-spacing:-.01em; margin:0;
+    text-wrap:balance;
+  }
+  .lede{ margin:0; color:var(--ink-soft); font-size:14px; max-width:60ch; }
+
+  /* ---- 붙여넣기 ---- */
+  .paste{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px; display:flex; flex-direction:column; gap:10px; box-shadow:var(--shadow);
+  }
+  .paste-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .paste-label{
+    font-size:11px; font-weight:600; letter-spacing:.09em; text-transform:uppercase;
+    color:var(--ink-faint);
+  }
+  #src{
+    width:100%; min-height:104px; resize:vertical;
+    font-family:'IBM Plex Mono', ui-monospace, monospace; font-size:12px; line-height:1.55;
+    color:var(--ink); background:var(--surface-sunk);
+    border:1px solid var(--line); border-radius:10px; padding:11px 12px;
+  }
+  #src::placeholder{ color:var(--ink-faint); }
+  #src:focus-visible, button:focus-visible, input:focus-visible{
+    outline:2px solid var(--brand); outline-offset:2px;
+  }
+  .paste-foot{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .status{ font-size:12.5px; color:var(--ink-soft); }
+  .status strong{ color:var(--ink); font-weight:600; }
+  .btn-row{ display:flex; gap:8px; }
+  button{
+    font-family:inherit; font-size:12.5px; font-weight:600; color:var(--ink);
+    background:var(--surface); border:1px solid var(--line); border-radius:8px;
+    padding:6px 12px; cursor:pointer;
+  }
+  button:hover{ border-color:var(--ink-faint); }
+  button.primary{ background:var(--brand); border-color:var(--brand); color:#fff; }
+  button.primary:hover{ filter:brightness(1.06); }
+
+  /* ---- 요약 ---- */
+  .summary{
+    display:flex; align-items:stretch; gap:1px; background:var(--line);
+    border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;
+  }
+  .sum-cell{ flex:1 1 0; background:var(--surface); padding:13px 16px; display:flex; flex-direction:column; gap:2px; }
+  .sum-k{ font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-faint); font-weight:600; }
+  .sum-v{ font-family:'IBM Plex Mono', monospace; font-size:22px; font-weight:600; font-variant-numeric:tabular-nums; line-height:1.2; }
+  .sum-cell.is-stay .sum-v{ color:var(--stay); }
+  .sum-cell.is-out .sum-v{ color:var(--out); }
+  .sum-note{ font-size:11.5px; color:var(--ink-faint); }
+
+  /* ---- 예시 배지 ---- */
+  .sample-bar{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    background:var(--brand-soft); border:1px dashed var(--brand);
+    border-radius:10px; padding:9px 13px; font-size:12.5px; color:var(--ink-soft);
+  }
+  .sample-bar b{ color:var(--brand); font-weight:700; }
+
+  /* ---- 입실일 선택 ---- */
+  .datebar{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  .datebar-label{ font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint); }
+  .chip{
+    font-family:'IBM Plex Mono', monospace; font-size:12px; font-variant-numeric:tabular-nums;
+    background:var(--surface); color:var(--ink-soft);
+    border:1px solid var(--line); border-radius:999px; padding:4px 11px; cursor:pointer;
+  }
+  .chip:hover{ border-color:var(--ink-faint); }
+  .chip[aria-pressed="true"]{ background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600; }
+  .chip .cnt{ opacity:.7; margin-left:5px; }
+  .warn{
+    display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-top:12px;
+    background:var(--stay-soft); border:1px solid var(--stay-line); border-radius:10px;
+    padding:9px 13px; font-size:12.5px; color:var(--ink-soft);
+  }
+  .warn b{ color:var(--stay); font-weight:700; }
+  .today-tag{
+    font-size:10.5px; font-weight:700; letter-spacing:.06em;
+    background:var(--brand); color:#fff; border-radius:999px; padding:1px 7px; margin-left:7px;
+    vertical-align:middle;
+  }
+
+  /* ---- 결과 ---- */
+  .results{ display:flex; flex-direction:column; gap:20px; }
+  @media (max-width:560px){
+    .summary{ flex-wrap:wrap; }
+    .sum-cell{ flex:1 1 44%; }
+    .stay-grid{ grid-template-columns:1fr; }  /* 좁은 화면에선 침대 타입 영역을 세로로 쌓는다 */
+    h1{ font-size:26px; }
+  }
+
+  /* ---- 연박 영역(작업 대상) ---- */
+  .stay-area{ display:flex; flex-direction:column; gap:11px; }
+  .stay-area-head{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .stay-area-title{ font-size:18px; font-weight:700; color:var(--stay); letter-spacing:-.01em; }
+  .stay-area-sub{ font-size:12.5px; color:var(--ink-soft); }
+  .stay-area-sum{ margin-left:auto; font-family:'IBM Plex Mono', monospace; font-size:12.5px; color:var(--ink-soft); font-variant-numeric:tabular-nums; }
+
+  /* 성별 침대는 각각 독립된 영역으로 나눠, 배지를 읽지 않고 바로 스캔되게 한다. */
+  .stay-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px; align-items:start; }
+  .stay-card{ background:var(--surface); border:1px solid var(--stay-line); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); }
+  .stay-card-head{
+    background:var(--stay-soft); border-bottom:1px solid var(--stay-line);
+    padding:11px 16px; display:flex; align-items:baseline; gap:9px;
+  }
+  .stay-card-name{ font-size:15px; font-weight:700; letter-spacing:-.01em; }
+  .stay-card-sum{ margin-left:auto; font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--stay); font-weight:600; font-variant-numeric:tabular-nums; }
+  .stay-card.is-empty{ border-color:var(--line); box-shadow:none; }
+  .stay-card.is-empty .stay-card-head{ background:var(--surface-sunk); border-bottom-color:var(--line-soft); }
+  .stay-card.is-empty .stay-card-name{ color:var(--ink-soft); font-weight:600; }
+  .stay-card.is-empty .stay-card-sum{ color:var(--ink-faint); font-weight:400; }
+  .stay-none{ padding:14px 16px; font-size:12.5px; color:var(--ink-faint); }
+
+  .stay-row{
+    display:flex; align-items:center; gap:10px; padding:11px 16px;
+    border-top:1px solid var(--line-soft); cursor:pointer;
+  }
+  .stay-row:first-of-type{ border-top:none; }
+  .stay-row.done{ opacity:.45; }
+  .stay-row.done .name{ text-decoration:line-through; }
+  .stay-row input[type="checkbox"]{ width:17px; height:17px; flex:none; accent-color:var(--stay); cursor:pointer; margin:0; }
+  .stay-row .name{ font-weight:600; font-size:15px; flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .nights-big{
+    font-family:'IBM Plex Mono', monospace; font-size:15px; font-weight:600; color:var(--stay);
+    font-variant-numeric:tabular-nums; flex:none;
+  }
+  .until{
+    font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--ink-faint);
+    font-variant-numeric:tabular-nums; flex:none; white-space:nowrap;
+  }
+
+  /* ---- 참고 영역 ---- */
+  .ref{ border-top:1px solid var(--line); padding-top:20px; display:flex; flex-direction:column; gap:12px; }
+  .ref-head{ font-size:11px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-faint); }
+  .ref-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; }
+  .ref-card{ background:var(--surface-sunk); border:1px solid var(--line-soft); border-radius:11px; padding:12px 14px; }
+  .ref-card-head{ display:flex; align-items:baseline; gap:8px; margin-bottom:7px; }
+  .ref-card-name{ font-size:13px; font-weight:600; }
+  .ref-card-count{ font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--ink-faint); font-variant-numeric:tabular-nums; }
+  .ref-names{ font-size:12.5px; color:var(--ink-soft); line-height:1.75; }
+  .ref-names span:not(:last-child)::after{ content:' · '; color:var(--ink-faint); }
+
+  .empty{
+    background:var(--surface); border:1px dashed var(--line); border-radius:var(--radius);
+    padding:34px 20px; text-align:center; color:var(--ink-faint); font-size:13.5px;
+  }
+  footer{ color:var(--ink-faint); font-size:11.5px; line-height:1.7; }
+  footer code{ font-family:'IBM Plex Mono', monospace; color:var(--ink-soft); }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+</style>
+<style>
+  /* 아티팩트 호스트가 넣어주던 기본값을 단독 페이지에서도 동일하게 맞춘다. */
+  html, body{ margin:0; padding:0; }
+  img{ max-width:100%; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>연박 체크보드</h1>
+    <p class="lede">예약 목록을 붙여넣으면 <b>당일 입실자</b>만 골라, 숙박 기간으로 박수를 계산해 침대 타입별로 연박과 1박을 나눠 정리합니다.</p>
+  </header>
+
+  <section class="paste">
+    <div class="paste-head">
+      <span class="paste-label">예약 목록 붙여넣기</span>
+      <span class="status" id="status">예시 데이터를 보고 있습니다</span>
+    </div>
+    <textarea id="src" spellcheck="false" placeholder="예약 관리 화면의 목록을 헤더 포함해 그대로 붙여넣으세요. 붙여넣는 즉시 정리됩니다."></textarea>
+    <div class="paste-foot">
+      <span class="status" id="hint">숙박 기간(<code>2026-09-05 부터 2026-09-06 까지</code>) 줄을 기준으로 예약을 인식합니다.</span>
+      <span class="btn-row">
+        <button id="clearBtn" type="button">지우기</button>
+        <button id="copyBtn" type="button" class="primary">결과 복사</button>
+      </span>
+    </div>
+  </section>
+
+  <section id="summary"></section>
+  <section class="results" id="results"></section>
+
+  <footer>
+    체크 표시는 이 브라우저에 입실일 기준으로 저장되어, 같은 날 다시 열면 그대로 남아 있습니다.
+  </footer>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // 한 예약이 여러 줄로 쪼개져 붙여넣어지기 때문에 열 위치를 세지 않는다.
+  // "YYYY-MM-DD 부터 YYYY-MM-DD 까지" 줄이 예약 한 건당 정확히 하나씩 있으므로
+  // 그 줄을 기준점으로 잡고 앞뒤에서 필요한 값만 찾아낸다.
+  var PERIOD = /(\d{4})-(\d{2})-(\d{2})\s*부터\s*(\d{4})-(\d{2})-(\d{2})\s*까지/;
+
+  function parse(text){
+    var lines = String(text || '').replace(/\r/g, '').split('\n')
+      .map(function(l){ return l.trim(); })
+      .filter(function(l){ return l !== ''; });
+    var out = [];
+    lines.forEach(function(line, i){
+      var m = line.match(PERIOD);
+      if(!m) return;
+      var checkIn = m[1] + '-' + m[2] + '-' + m[3];
+      var checkOut = m[4] + '-' + m[5] + '-' + m[6];
+      var nights = Math.max(1, Math.round((Date.parse(checkOut) - Date.parse(checkIn)) / 86400000));
+
+      // 객실타입: 기준줄 앞쪽에서 가장 가까운 "...베드 / N인실 / ...룸" 형태의 줄
+      var roomType = '';
+      for(var j = i - 1; j >= Math.max(0, i - 8); j--){
+        var v = lines[j];
+        if(/^\d+\s*명$/.test(v)) continue;
+        if(/(베드|인실|룸|실)$/.test(v)){ roomType = v; break; }
+      }
+      var people = '';
+      for(var k = i - 1; k >= Math.max(0, i - 8); k--){
+        var pm = lines[k].match(/^(\d+)\s*명$/);
+        if(pm){ people = Number(pm[1]); break; }
+      }
+      var channel = lines[i + 1] || '';
+      // 예약자명: 예약처 다음 줄부터. "TL" 같은 짧은 라벨 줄은 건너뛴다.
+      var name = '';
+      for(var n = i + 2; n < Math.min(lines.length, i + 6); n++){
+        var w = lines[n];
+        if(!w || /^[A-Z]{1,3}$/.test(w)) continue;
+        name = w; break;
+      }
+      out.push({
+        checkIn: checkIn, checkOut: checkOut, nights: nights,
+        roomType: roomType || '(타입 미상)', people: people,
+        channel: channel, name: name || '(이름 미상)'
+      });
+    });
+    return out;
+  }
+
+  // 여성/남성 전용베드를 항상 위에, 나머지는 가나다순
+  var TYPE_ORDER = ['여성전용베드', '남성전용베드'];
+  function group(list){
+    var byType = {};
+    list.forEach(function(r){
+      (byType[r.roomType] = byType[r.roomType] || []).push(r);
+    });
+    return Object.keys(byType).sort(function(a, b){
+      var ia = TYPE_ORDER.indexOf(a), ib = TYPE_ORDER.indexOf(b);
+      if(ia >= 0 || ib >= 0) return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+      return a.localeCompare(b, 'ko');
+    }).map(function(type){
+      var items = byType[type];
+      return {
+        type: type,
+        stay: items.filter(function(r){ return r.nights >= 2; })
+                   .sort(function(a, b){ return b.nights - a.nights || a.name.localeCompare(b.name, 'ko'); }),
+        out: items.filter(function(r){ return r.nights === 1; })
+                  .sort(function(a, b){ return a.name.localeCompare(b.name, 'ko'); }),
+        total: items.length
+      };
+    });
+  }
+
+  // 오늘 날짜(로컬 기준). 붙여넣은 목록에서 "당일 입실"만 골라내는 기준이 된다.
+  function todayISO(){
+    var d = new Date();
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  }
+
+  // ---- 체크 상태: 보고 있는 입실일 기준으로 이 브라우저에만 저장 ----
+  var checkedSet = {};
+  function storeKey(){ return 'stay-check:' + (state.selected || 'none'); }
+  function loadChecked(){
+    checkedSet = {};
+    try{
+      var raw = localStorage.getItem(storeKey());
+      if(raw) (JSON.parse(raw) || []).forEach(function(k){ checkedSet[k] = true; });
+    }catch(e){ /* 저장소를 못 쓰는 환경이면 체크는 이 세션에서만 유지된다 */ }
+  }
+  function saveChecked(){
+    try{
+      localStorage.setItem(storeKey(), JSON.stringify(Object.keys(checkedSet)));
+    }catch(e){ /* 무시 */ }
+  }
+  function rowKey(r){ return r.roomType + '|' + r.name + '|' + r.checkIn + '|' + r.checkOut; }
+
+  // all: 붙여넣은 전체, selected: 지금 보고 있는 입실일(기본은 오늘)
+  var state = { all: [], dates: [], selected: '', isSample: true };
+
+  function visible(){
+    return state.all.filter(function(r){ return r.checkIn === state.selected; });
+  }
+
+  var elSrc = document.getElementById('src');
+  var elStatus = document.getElementById('status');
+  var elSummary = document.getElementById('summary');
+  var elResults = document.getElementById('results');
+
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c];
+    });
+  }
+
+  function render(){
+    elStatus.textContent = state.isSample
+      ? '예시 데이터를 보고 있습니다'
+      : '붙여넣은 ' + state.all.length + '건을 읽었습니다';
+
+    if(state.all.length === 0){
+      elSummary.innerHTML = '';
+      elResults.innerHTML = '<div class="empty">아직 붙여넣은 예약이 없습니다.<br>위 칸에 예약 목록을 붙여넣으면 바로 정리됩니다.</div>';
+      return;
+    }
+
+    var list = visible();
+    var groups = group(list);
+    var stayList = list.filter(function(r){ return r.nights >= 2; });
+    var outCount = list.length - stayList.length;
+    var today = todayISO();
+    var isToday = state.selected === today;
+    var otherCount = state.all.length - list.length;
+
+    // 준비가 필요한 건 연박이므로, 연박 건수와 총 박수를 앞에 둔다.
+    var totalStayNights = stayList.reduce(function(a, r){ return a + r.nights; }, 0);
+
+    var chips = state.dates.length > 1
+      ? '<div class="datebar"><span class="datebar-label">입실일</span>' +
+          state.dates.map(function(d){
+            return '<button type="button" class="chip" data-date="' + d.date + '" aria-pressed="' +
+              (d.date === state.selected) + '">' + d.date.slice(5).replace('-', '/') +
+              (d.date === today ? ' 오늘' : '') +
+              '<span class="cnt">' + d.count + '</span></button>';
+          }).join('') +
+        '</div>'
+      : '';
+
+    var warn = '';
+    if(!isToday){
+      warn = '<div class="warn"><b>오늘 입실이 아닙니다</b> ' +
+        state.selected.slice(5).replace('-', '/') + ' 입실 건을 보고 있습니다. 오늘은 ' +
+        today.slice(5).replace('-', '/') + '입니다.</div>';
+    } else if(otherCount > 0){
+      warn = '<div class="warn">오늘 입실 ' + list.length + '건만 정리했습니다. ' +
+        '<b>다른 날짜 ' + otherCount + '건</b>은 위 입실일 버튼으로 확인할 수 있습니다.</div>';
+    }
+
+    elSummary.innerHTML =
+      '<div class="summary">' +
+        cell('입실일', state.selected.slice(5).replace('-', '/') + (isToday ? '<span class="today-tag">오늘</span>' : ''), '', state.selected.slice(0, 4) + '년') +
+        cell('당일 입실', list.length + '건', '', groups.length + '개 타입') +
+        cell('연박 준비', stayList.length + '건', 'is-stay', totalStayNights + '박 분량') +
+        cell('1박', outCount + '건', 'is-out', '내일 퇴실') +
+      '</div>' + chips + warn +
+      (state.isSample
+        ? '<div class="sample-bar" style="margin-top:12px;"><b>예시 데이터</b> 실제 예약 목록을 붙여넣으면 이 내용이 교체됩니다.</div>'
+        : '');
+
+    if(list.length === 0){
+      elResults.innerHTML = '<div class="empty">이 날짜에 입실하는 예약이 없습니다.</div>';
+      bindChips();
+      return;
+    }
+
+    // 실제 작업 대상은 연박뿐. 성별 침대는 각각 독립 영역으로 나눠, 배지를 읽지 않고
+    // 영역만 보고 바로 스캔되게 한다.
+    var stayByType = {};
+    stayList.forEach(function(r){ (stayByType[r.roomType] = stayByType[r.roomType] || []).push(r); });
+
+    // 전용베드 두 종류는 연박이 없어도 카드를 남긴다 — 매일 같은 자리에서 확인하는 일이라
+    // "오늘은 없음"까지 보여야 확인이 끝난다. 다인실 등은 연박이 있을 때만 붙인다.
+    var stayTypes = TYPE_ORDER.slice();
+    Object.keys(stayByType).sort(function(a, b){ return a.localeCompare(b, 'ko'); }).forEach(function(t){
+      if(stayTypes.indexOf(t) < 0) stayTypes.push(t);
+    });
+
+    var stayHtml =
+      '<div class="stay-area">' +
+        '<div class="stay-area-head">' +
+          '<span class="stay-area-title">연박</span>' +
+          '<span class="stay-area-sub">따로 준비가 필요한 입실자</span>' +
+          '<span class="stay-area-sum">' + stayList.length + '명 · ' + totalStayNights + '박</span>' +
+        '</div>' +
+        '<div class="stay-grid">' +
+          stayTypes.map(function(type){
+            var items = (stayByType[type] || []).slice().sort(function(a, b){
+              return b.nights - a.nights || a.name.localeCompare(b.name, 'ko');
+            });
+            var nightSum = items.reduce(function(a, r){ return a + r.nights; }, 0);
+            return '<div class="stay-card' + (items.length === 0 ? ' is-empty' : '') + '">' +
+              '<div class="stay-card-head">' +
+                '<span class="stay-card-name">' + esc(type) + '</span>' +
+                '<span class="stay-card-sum">' +
+                  (items.length === 0 ? '연박 없음' : items.length + '명 · ' + nightSum + '박') +
+                '</span>' +
+              '</div>' +
+              (items.length === 0
+                ? '<div class="stay-none">준비할 연박 입실자가 없습니다.</div>'
+                : items.map(function(r){
+                    var key = rowKey(r);
+                    var done = !!checkedSet[key];
+                    return '<label class="stay-row' + (done ? ' done' : '') + '" data-key="' + esc(key) + '">' +
+                      '<input type="checkbox"' + (done ? ' checked' : '') + '>' +
+                      '<span class="name">' + esc(r.name) + '</span>' +
+                      '<span class="nights-big">' + r.nights + '박</span>' +
+                      '<span class="until">~' + esc(r.checkOut.slice(5).replace('-', '/')) + '</span>' +
+                    '</label>';
+                  }).join('')) +
+            '</div>';
+          }).join('') +
+        '</div>' +
+      '</div>';
+
+    var refHtml = '<div class="ref">' +
+        '<div class="ref-head">참고 · 1박 ' + outCount + '건</div>' +
+        (outCount === 0
+          ? '<div class="ref-names">1박 입실자가 없습니다.</div>'
+          : '<div class="ref-grid">' +
+              groups.filter(function(g){ return g.out.length > 0; }).map(function(g){
+                return '<div class="ref-card">' +
+                  '<div class="ref-card-head">' +
+                    '<span class="ref-card-name">' + esc(g.type) + '</span>' +
+                    '<span class="ref-card-count">' + g.out.length + '명</span>' +
+                  '</div>' +
+                  '<div class="ref-names">' +
+                    g.out.map(function(r){ return '<span>' + esc(r.name) + '</span>'; }).join('') +
+                  '</div>' +
+                '</div>';
+              }).join('') +
+            '</div>') +
+      '</div>';
+
+    elResults.innerHTML = stayHtml + refHtml;
+
+    bindChips();
+    bindRows();
+  }
+
+  function bindChips(){
+    elSummary.querySelectorAll('.chip').forEach(function(chip){
+      chip.addEventListener('click', function(){
+        state.selected = chip.getAttribute('data-date');
+        loadChecked();
+        render();
+      });
+    });
+  }
+
+  // v는 날짜·건수처럼 이 안에서 만들어낸 값만 들어오므로 마크업을 그대로 쓴다.
+  function cell(k, v, cls, note){
+    return '<div class="sum-cell ' + cls + '">' +
+      '<span class="sum-k">' + esc(k) + '</span>' +
+      '<span class="sum-v">' + v + '</span>' +
+      '<span class="sum-note">' + esc(note) + '</span>' +
+    '</div>';
+  }
+
+
+  function bindRows(){
+    elResults.querySelectorAll('.stay-row').forEach(function(row){
+      var cb = row.querySelector('input');
+      cb.addEventListener('change', function(){
+        var key = row.getAttribute('data-key');
+        if(cb.checked) checkedSet[key] = true; else delete checkedSet[key];
+        row.classList.toggle('done', cb.checked);
+        saveChecked();
+      });
+    });
+  }
+
+  function apply(text, isSample){
+    var parsed = parse(text);
+    state.all = parsed;
+    state.isSample = !!isSample;
+
+    // 입실일별로 묶고, 기본은 오늘. 오늘 입실 건이 없으면 가장 많은 날짜를 먼저 보여준다.
+    var counts = {};
+    parsed.forEach(function(r){ counts[r.checkIn] = (counts[r.checkIn] || 0) + 1; });
+    state.dates = Object.keys(counts).sort().map(function(d){ return { date: d, count: counts[d] }; });
+    var today = todayISO();
+    if(counts[today]) state.selected = today;
+    else if(state.dates.length){
+      state.selected = state.dates.slice().sort(function(a, b){ return b.count - a.count; })[0].date;
+    } else state.selected = '';
+
+    loadChecked();
+    render();
+  }
+
+  elSrc.addEventListener('input', function(){
+    var v = elSrc.value.trim();
+    if(v === ''){ apply('', false); return; }
+    apply(elSrc.value, false);
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', function(){
+    elSrc.value = '';
+    apply('', false);
+    elSrc.focus();
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', function(){
+    var btn = this;
+    var list = visible();
+    if(list.length === 0) return;
+    var groups = group(list);
+    var stayTotal = list.filter(function(r){ return r.nights >= 2; }).length;
+    var text = '[연박] ' + state.selected + ' 입실 ' + list.length + '건 중 연박 ' + stayTotal + '건\n';
+    // 화면과 같은 순서(성별 침대별)로 적어야 보고 확인할 때 헷갈리지 않는다.
+    var byType = {};
+    list.filter(function(r){ return r.nights >= 2; })
+      .forEach(function(r){ (byType[r.roomType] = byType[r.roomType] || []).push(r); });
+    var types = TYPE_ORDER.slice();
+    Object.keys(byType).sort(function(a, b){ return a.localeCompare(b, 'ko'); }).forEach(function(t){
+      if(types.indexOf(t) < 0) types.push(t);
+    });
+    types.forEach(function(type){
+      var items = (byType[type] || []).sort(function(a, b){ return b.nights - a.nights; });
+      text += '\n■ ' + type + '\n';
+      if(items.length === 0){ text += '  연박 없음\n'; return; }
+      items.forEach(function(r){
+        text += '  - ' + r.name + ' ' + r.nights + '박 (~' + r.checkOut.slice(5) + ')\n';
+      });
+    });
+    text += '\n[참고] 1박\n';
+    groups.filter(function(g){ return g.out.length > 0; }).forEach(function(g){
+      text += '· ' + g.type + ' ' + g.out.length + '명: ' +
+        g.out.map(function(r){ return r.name; }).join(', ') + '\n';
+    });
+    navigator.clipboard.writeText(text).then(function(){
+      var was = btn.textContent;
+      btn.textContent = '복사됨';
+      setTimeout(function(){ btn.textContent = was; }, 1500);
+    }).catch(function(){
+      elSrc.value = text;
+      elSrc.select();
+    });
+  });
+
+  // 처음 열었을 때 빈 화면 대신 실제 형식 그대로의 예시를 정리해 보여준다.
+  var SAMPLE = [
+    '0902','1128150680200902','여성전용베드','여성전용베드','미배정','1명','숙박','오늘 00:39','2026-09-05 부터 2026-09-06 까지','트립닷컴','TL','Zhang Xinxin','0269178710400561','-','70,666원',
+    '0624','1770660624','남성전용베드','남성전용베드','미배정','1명','숙박','오늘 00:29','2026-09-05 부터 2026-09-08 까지','아고다','TL','Enzo Chesnais','330633055559','-','116,662원',
+    '5683','1400828775085683','여성전용베드','여성전용베드','미배정','1명','숙박','2026년 09월 04일 17:24','2026-09-05 부터 2026-09-06 까지','트립닷컴','TL','Kang Minseon','0269178710767047','-','72,628원',
+    '4756','5768124756','남성전용베드','남성전용베드','미배정','1명','숙박','2026년 09월 04일 16:44','2026-09-05 부터 2026-09-06 까지','부킹닷컴','TL','kwon jisu','02035640799','-','70,426원',
+    '2949','HMNPJSFBWT','남성전용베드','남성전용베드','미배정','1명','숙박','2026년 09월 04일 14:24','2026-09-05 부터 2026-09-06 까지','에어비앤비','TL','김 형준','미등록','-','67,324원',
+    '0863','1128150662920863','남성전용베드','남성전용베드','미배정','1명','숙박','2026년 09월 03일 14:24','2026-09-05 부터 2026-09-06 까지','트립닷컴','TL','YU XINGMING','0269178710786628','-','52,545원',
+    '0099','HMNXP9T9ZR','남성전용베드','남성전용베드','미배정','1명','숙박','2026년 09월 03일 00:44','2026-09-05 부터 2026-09-06 까지','에어비앤비','TL','강 동우','미등록','-','56,910원',
+    '5392','1769795392','여성전용베드','여성전용베드','미배정','1명','숙박','2026년 09월 02일 22:29','2026-09-05 부터 2026-09-06 까지','아고다','TL','Seo-young Jo','8201029679033','-','61,109원',
+    '0222','HM2T22FPAX','남성전용베드','남성전용베드','미배정','1명','숙박','2026년 09월 02일 14:24','2026-09-05 부터 2026-09-06 까지','에어비앤비','TL','Kim Jun','미등록','-','56,910원',
+    '5183','1400828705605183','여성전용베드','여성전용베드','미배정','1명','숙박','2026년 09월 02일 12:04','2026-09-05 부터 2026-09-06 까지','트립닷컴','TL','LIM SUNHYE','0269178710617699','-','52,998원',
+    '0083','HM8JJAFD','여성전용베드','여성전용베드','미배정','1명','숙박','2026년 09월 02일 09:19','2026-09-05 부터 2026-09-06 까지','에어비앤비','TL','송 채빈','미등록','-','61,463원',
+    '7067','1400828693097067','여성전용베드','여성전용베드','미배정','1명','숙박','2026년 09월 02일 01:14','2026-09-05 부터 2026-09-06 까지','트립닷컴','TL','kim yerin','0269178710449300','-','41,674원',
+    '4324','1128150619364324','여성전용베드','여성전용베드','미배정','1명','숙박','2026년 08월 31일 15:39','2026-09-05 부터 2026-09-07 까지','트립닷컴','TL','NONG YUNYA','0269178710179379','-','83,348원',
+    '0988','1400828565460988','남성전용베드','남성전용베드','미배정','1명','숙박','2026년 08월 30일 16:59','2026-09-05 부터 2026-09-06 까지','트립닷컴','TL','PARK GYEONGJUN','0269178710507461','-','41,674원',
+    '8963','5152248963','남성전용베드','남성전용베드','미배정','1명','숙박','2026년 08월 30일 14:34','2026-09-05 부터 2026-09-06 까지','부킹닷컴','TL','SUNGMOK PARK','02035640799','-','56,098원',
+    '5873','6921535873','4인실','4인실','미배정','4명','숙박','2026년 08월 30일 10:59','2026-09-05 부터 2026-09-06 까지','부킹닷컴','TL','JIHYE KIM','02035640799','-','194,982원',
+    '3924','1400828500013924','6인실','6인실','미배정','6명','숙박','2026년 08월 27일 20:39','2026-09-05 부터 2026-09-06 까지','트립닷컴','TL','padilla jasmin','0269178710273865','-','326,638원'
+  ].join('\n');
+
+  apply(SAMPLE, true);
+})();
+</script>
+
+</body>
+</html>
