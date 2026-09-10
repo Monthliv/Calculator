@@ -326,9 +326,14 @@
 </div>
 
 <script>
-// ---- 지점/룸타입별 연장 단가 데이터 (먼슬리브_연장금액.xlsx 기준) ----
+// ---- 지점/룸타입별 연장 단가 데이터 ----
 // p1/p2: 1인/2인 정상 입실료, new: 신규회원 1박 금액, ex: 기존회원 1박 금액 (숫자 또는 [1인,2인] 배열)
-const ROOMS = [
+//
+// 실제 기준값은 운영 대시보드의 방 가격 원장(Firestore monthliv/roomPrices)이다.
+// 관리자 설정 > 방 가격 관리에서 엑셀로 올리면 이 계산기에도 바로 반영된다.
+// 아래 배열은 원장을 못 읽었을 때(네트워크 오류 등) 쓰는 예비값이라, 값을 여기서 고치지 말고
+// 대시보드에서 올릴 것 — 여기만 고치면 대시보드와 값이 어긋난다.
+let ROOMS = [
   {"b":"먼슬리브 성수","r":"그레이스","p1":950000,"p2":null,"new":43000,"ex":32000,"nums":["201호","202호","203호","204호","301호","302호","303호","304호","310호","401호","402호","403호","404호","410호"]},
   {"b":"먼슬리브 성수","r":"블레스","p1":850000,"p2":null,"new":48000,"ex":29000,"nums":["205호","206호","207호","208호","209호","305호","306호","307호","308호","405호","406호","407호","408호"]},
   {"b":"먼슬리브 성수","r":"트리니티","p1":1050000,"p2":1150000,"new":50000,"ex":[35000,39000],"nums":["309호","409호"]},
@@ -426,8 +431,51 @@ const resultScenario = document.getElementById('resultScenario');
 const resultAmount = document.getElementById('resultAmount');
 const resultBreakdown = document.getElementById('resultBreakdown');
 
-const branches = [...new Set(ROOMS.map(x => x.b))];
-branchSel.innerHTML = branches.map(b => `<option value="${b}">${b}</option>`).join('');
+function fillBranches() {
+  const branches = [...new Set(ROOMS.map(x => x.b))];
+  branchSel.innerHTML = branches.map(b => `<option value="${b}">${b}</option>`).join('');
+}
+fillBranches();
+
+// ---- 방 가격 원장 불러오기 ----
+// 대시보드와 같은 값을 쓰기 위해 Firestore의 공개 문서 하나를 읽는다. SDK를 붙이면 페이지가
+// 무거워져서, 인증이 필요 없는 REST 엔드포인트를 fetch로 직접 호출한다(문서 1건 읽기).
+// 실패하면 위의 예비값을 그대로 쓰므로 계산기는 어떤 경우에도 동작한다.
+const ROOM_PRICES_URL = 'https://firestore.googleapis.com/v1/projects/monthliv-482bd/databases/(default)/documents/monthliv/roomPrices';
+
+function unwrapFirestore(v) {
+  if (!v || typeof v !== 'object') return v;
+  if ('stringValue' in v) return v.stringValue;
+  if ('integerValue' in v) return parseInt(v.integerValue, 10);
+  if ('doubleValue' in v) return Number(v.doubleValue);
+  if ('booleanValue' in v) return v.booleanValue;
+  if ('nullValue' in v) return null;
+  if ('arrayValue' in v) return (v.arrayValue.values || []).map(unwrapFirestore);
+  if ('mapValue' in v) {
+    const o = {};
+    for (const k in (v.mapValue.fields || {})) o[k] = unwrapFirestore(v.mapValue.fields[k]);
+    return o;
+  }
+  return v;
+}
+
+async function loadRoomPrices() {
+  try {
+    const res = await fetch(ROOM_PRICES_URL, { cache: 'no-store' });
+    if (!res.ok) return;                       // 문서가 아직 없으면 예비값 유지
+    const doc = await res.json();
+    const rooms = unwrapFirestore((doc.fields || {}).rooms);
+    if (!Array.isArray(rooms) || rooms.length === 0) return;
+    ROOMS = rooms;
+    // 목록이 바뀌었으니 지점/룸타입/호실 선택을 처음부터 다시 채운다.
+    fillBranches();
+    fillRooms(branchSel.value);
+    calculate();
+  } catch (e) {
+    // 예비값으로 계속 동작한다 — 계산기가 멈추는 것보다 낫다.
+    console.error('방 가격 원장을 불러오지 못해 내장된 예비값을 사용합니다:', e);
+  }
+}
 
 function fillRooms(branch) {
   const rooms = ROOMS.filter(x => x.b === branch);
@@ -482,6 +530,10 @@ const today = new Date().toISOString().slice(0, 10);
 currentEndInput.value = today;
 newEndInput.value = today;
 fillRooms(branchSel.value);
+
+// 예비값으로 먼저 화면을 채운 뒤, 원장을 읽어오면 그 값으로 교체한다.
+// (원장을 기다리느라 빈 화면을 보여주지 않기 위해 순서를 이렇게 둔다)
+loadRoomPrices();
 
 function calculate() {
   const room = currentRoom();
