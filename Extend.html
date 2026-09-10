@@ -478,19 +478,34 @@ async function loadRoomPrices() {
 }
 
 function fillRooms(branch) {
-  const rooms = ROOMS.filter(x => x.b === branch);
-  roomSel.innerHTML = rooms.map(x => `<option value="${x.r}">${x.r}</option>`).join('');
+  // 같은 룸타입이라도 호실마다 가격이 다른 지점이 있어(구로 트리니티B 등) 원장에 같은
+  // 이름의 행이 여러 개 올 수 있다. 드롭다운에는 타입을 한 번만 보여준다.
+  const types = [...new Set(ROOMS.filter(x => x.b === branch).map(x => x.r))];
+  roomSel.innerHTML = types.map(t => `<option value="${t}">${t}</option>`).join('');
   applyRoomData();
 }
 
+function roomRows() {
+  return ROOMS.filter(x => x.b === branchSel.value && x.r === roomSel.value);
+}
+
+// 가격은 고른 호실이 들어있는 행에서 가져온다. 타입만 보고 첫 행을 쓰면 같은 타입의
+// 다른 가격대 호실이 아예 선택되지 않거나 엉뚱한 금액이 나온다.
 function currentRoom() {
-  return ROOMS.find(x => x.b === branchSel.value && x.r === roomSel.value) || null;
+  const rows = roomRows();
+  if (rows.length === 0) return null;
+  const picked = roomNumberSel.value;
+  return rows.find(r => (r.nums || []).includes(picked)) || rows[0];
 }
 
 function applyRoomData() {
-  const room = currentRoom();
-  roomNumberSel.innerHTML = (room ? room.nums : []).map(n => `<option value="${n}">${n}</option>`).join('');
+  const nums = [...new Set(roomRows().flatMap(r => r.nums || []))];
+  roomNumberSel.innerHTML = nums.map(n => `<option value="${n}">${n}</option>`).join('');
+  applyRoomNumber();
+}
 
+function applyRoomNumber() {
+  const room = currentRoom();
   const hasOccupancy = !!(room && room.p2);
   occupancyField.style.display = hasOccupancy ? 'block' : 'none';
   if (!hasOccupancy) {
@@ -523,6 +538,7 @@ occupancyButtons.forEach(btn => {
 
 branchSel.addEventListener('change', () => fillRooms(branchSel.value));
 roomSel.addEventListener('change', applyRoomData);
+roomNumberSel.addEventListener('change', applyRoomNumber);
 [currentEndInput, newEndInput].forEach(el => el.addEventListener('change', calculate));
 
 // 초기값: 오늘 날짜
